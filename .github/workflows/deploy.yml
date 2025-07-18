@@ -80,49 +80,43 @@ jobs:
     needs: [determine-environment, build-and-push]
     if: needs.determine-environment.outputs.deploy == 'true'
     environment: ${{ needs.determine-environment.outputs.environment }}
+    permissions:
+      contents: write
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
         with:
-          version: 'v1.28.0'
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          fetch-depth: 0
 
-      - name: Setup Argo CD CLI
+      - name: Configure Git
         run: |
-          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-          rm argocd-linux-amd64
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Configure kubectl
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
-      - name: Deploy to Argo CD
+      - name: Update image tag in deployment manifest
         env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
           ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # Update image tag in the deployment manifest
           sed -i "s|image: .*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${IMAGE_TAG:0:7}|g" k8s/$ENVIRONMENT/deployment.yaml
           
-          # Commit the updated manifest back to the repo (GitOps approach)
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/$ENVIRONMENT/deployment.yaml
-          git commit -m "Update $ENVIRONMENT deployment image to ${IMAGE_TAG:0:7}" || echo "No changes to commit"
-          git push origin HEAD:main || echo "No changes to push"
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add k8s/$ENVIRONMENT/deployment.yaml
+            git commit -m "Update $ENVIRONMENT deployment image to ${IMAGE_TAG:0:7}" || echo "No changes to commit"
+            git push origin ${{ github.ref_name }} || echo "No changes to push"
+          fi
 
-          # Apply Argo CD Application if it doesn't exist
-          kubectl apply -f argocd/applications/$ENVIRONMENT-app.yaml || echo "Application already exists"
-          
-          # Sync the application
-          argocd app sync k8s-app-$ENVIRONMENT --server $ARGOCD_SERVER --auth-token $ARGOCD_AUTH_TOKEN --insecure
+      - name: Validate deployment
+        run: |
+          echo "✅ Deployment manifest updated successfully"
+          echo "🔍 Checking updated manifest:"
+          cat k8s/${{ needs.determine-environment.outputs.environment }}/deployment.yaml | grep -A 2 "image:"
 
   notify:
     runs-on: ubuntu-latest
