@@ -1,0 +1,21 @@
+{
+  "name": "k8s-app-deploy",
+  "version": "1.0.0",
+  "description": "Sample application for Kubernetes deployment with Argo CD",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "echo 'Building application...'",
+    "test": "echo 'Running tests...'",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["kubernetes", "argocd", "nodejs", "cicd"],
+  "author": "Abraham Tech",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
