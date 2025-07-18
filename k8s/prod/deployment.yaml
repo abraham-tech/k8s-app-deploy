@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: k8s-app-deploy
-        image: ghcr.io/abraham-tech/k8s-app-deploy:main-latest
+        image: ghcr.io/abraham-tech/k8s-app-deploy:main-a8b7cac
         ports:
         - containerPort: 3000
         env:
