@@ -19,14 +19,14 @@ spec:
     spec:
       containers:
       - name: k8s-app-deploy
-        image: ghcr.io/abraham-tech/k8s-app-deploy:develop-latest
+        image: nginx:alpine
         ports:
-        - containerPort: 3000
+        - containerPort: 80
         env:
         - name: NODE_ENV
           value: "development"
         - name: PORT
-          value: "3000"
+          value: "80"
         resources:
           requests:
             memory: "64Mi"
@@ -36,13 +36,13 @@ spec:
             cpu: "100m"
         livenessProbe:
           httpGet:
-            path: /health
-            port: 3000
+            path: /
+            port: 80
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
-            port: 3000
+            path: /
+            port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
